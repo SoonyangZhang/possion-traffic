@@ -9,6 +9,13 @@
 #include <time.h>
 #include <stdlib.h> //RAND_MAX
 //exponential distribution;
+static uint8_t seed_set_flag=0;
+void set_seed(){
+	if(!seed_set_flag){
+	srand((unsigned)time(NULL));
+	}
+	seed_set_flag=1;
+}
 double e_random(double lambda){
     double ret=0.0;
     double u=0.0;
@@ -29,6 +36,7 @@ PossionSender::PossionSender(uint32_t bps,uint32_t mtu){
 	m_packetSize=mtu;
 	m_interval=((double)m_packetSize*8*1000)/(m_bps);
 	m_lambda=1.0/m_interval;
+	set_seed();
 }
 PossionSender::~PossionSender(){}
 void PossionSender::Bind(uint16_t port){
