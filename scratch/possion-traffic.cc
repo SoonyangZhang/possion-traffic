@@ -1,5 +1,6 @@
 #include<iostream>
 #include<stdlib.h>
+#include <memory>
 #include "ns3/core-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/internet-module.h"
@@ -53,42 +54,74 @@ static NodeContainer BuildExampleTopo (uint64_t bps,
 	devices.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (em));*/
     return nodes;
 }
-static double simDuration=100;
-uint16_t client_port=1234;
-uint16_t serv_port=4321;
+static void InstallPossionApplication(
+                         Ptr<Node> sender,
+                         Ptr<Node> receiver,
+						 uint16_t send_port,
+                         uint16_t recv_port,uint32_t bps,
+                         float startTime,
+                         float stopTime,
+						 PossionTrace *trace
+)
+{
+    Ptr<PossionSender> sendApp = CreateObject<PossionSender> (bps);
+	Ptr<PossionReceiver> recvApp = CreateObject<PossionReceiver>();
+   	sender->AddApplication (sendApp);
+    receiver->AddApplication (recvApp);
+    Ptr<Ipv4> ipv4 = receiver->GetObject<Ipv4> ();
+	Ipv4Address receiverIp = ipv4->GetAddress (1, 0).GetLocal();
+	recvApp->Bind(recv_port);
+	sendApp->Bind(send_port);
+	sendApp->ConfigurePeer(receiverIp,recv_port);
+    sendApp->SetStartTime (Seconds (startTime));
+    sendApp->SetStopTime (Seconds (stopTime));
+    recvApp->SetStartTime (Seconds (startTime));
+    recvApp->SetStopTime (Seconds (stopTime));
+	if(trace){
+        sendApp->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,trace));
+        sendApp->SetTraceGapFun(MakeCallback(&PossionTrace::OnGap,trace));
+        recvApp->SetOwdTraceFuc(MakeCallback(&PossionTrace::OnOwd,trace));
+	}	
+}
+static double simDuration=200;
 float appStart=0.0;
 float appStop=simDuration-1;
 int main(int argc, char *argv[]){
 	LogComponentEnable("PossionSender",LOG_LEVEL_ALL);
 	LogComponentEnable("PossionReceiver",LOG_LEVEL_ALL);
-	uint64_t linkBw_1   = 1000000;//4000000;
-    uint32_t msDelay_1  = 100;//50;//100;
-    uint32_t msQDelay_1 = 200;
-    NodeContainer nodes = BuildExampleTopo (linkBw_1, msDelay_1, msQDelay_1);
-    Ptr<PossionSender> ps_app=CreateObject<PossionSender>(1000000);
-    Ptr<PossionReceiver> pr_app=CreateObject<PossionReceiver>();
-    nodes.Get(0)->AddApplication (ps_app);
-    nodes.Get(1)->AddApplication (pr_app);
-    ps_app->Bind(client_port);
-    pr_app->Bind(serv_port);
-    ps_app->SetStartTime (Seconds (appStart));
-    ps_app->SetStopTime (Seconds (appStop));
-    pr_app->SetStartTime (Seconds (appStart));
-    pr_app->SetStopTime (Seconds (appStop));
-    InetSocketAddress remote=pr_app->GetLocalAddress();
-   	ps_app->ConfigurePeer(remote.GetIpv4(),remote.GetPort());
-   	
-   	PossionTrace trace;
-   	std::string log="posssion";
-   	trace.OpenTraceOwdFile(log);
-   	trace.OpenTraceRttFile(log);
-   	trace.OpenTraceSendGapFile(log);
-   	ps_app->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,&trace));
-   	ps_app->SetTraceGapFun(MakeCallback(&PossionTrace::OnGap,&trace));
-   	pr_app->SetOwdTraceFuc(MakeCallback(&PossionTrace::OnOwd,&trace));
+	uint64_t linkBw   = 3000000;//4000000;
+    uint32_t msDelay  = 100;//50;//100;
+    uint32_t msQDelay = 200;
+    uint32_t num_clients=3;
+    uint32_t num_log=num_clients;
+    uint32_t send_port=1234;
+    uint32_t recv_port=send_port+num_clients;
+    NodeContainer nodes = BuildExampleTopo (linkBw, msDelay, msQDelay);
+    std::list<std::shared_ptr<PossionTrace>> traces;
+    uint32_t bps=1000000;
+    uint32_t i=0;
+    for(i=0;i<num_clients;i++){
+        std::string name="possion_"+std::to_string(i+1);
+        if(i<num_log){
+            std::shared_ptr<PossionTrace> trace(new PossionTrace());
+            trace->Log(name,E_POSSION_OWD);
+            InstallPossionApplication( nodes.Get(0), nodes.Get(1),send_port,recv_port,bps,
+            appStart,appStop,trace.get());
+            traces.push_back(trace);
+        }else{
+            InstallPossionApplication( nodes.Get(0), nodes.Get(1),send_port,recv_port,bps,
+            appStart,appStop,nullptr);
+        }
+        send_port++;
+	recv_port++;
+        
+    }
    	Simulator::Stop (Seconds(simDuration));
     Simulator::Run ();
     Simulator::Destroy();
+    while(!traces.empty()){
+        traces.pop_front();
+    }
     printf("stop");
 	return 0;
 }
