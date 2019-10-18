@@ -1,5 +1,4 @@
-#ifndef MODEL_POSSIONSENDER_H_
-#define MODEL_POSSIONSENDER_H_
+#pragma once
 #include "ns3/event-id.h"
 #include "ns3/callback.h"
 #include "ns3/application.h"
@@ -46,4 +45,3 @@ private:
     int64_t m_lastSendTs{0};
 };
 }
-#endif /* MODEL_POSSIONSENDER_H_ */

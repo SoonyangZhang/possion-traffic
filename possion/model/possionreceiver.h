@@ -1,5 +1,4 @@
-#ifndef MODEL_POSSIONRECEIVER_H_
-#define MODEL_POSSIONRECEIVER_H_
+#pragma once
 #include "ns3/simulator.h"
 #include "ns3/application.h"
 #include "ns3/socket.h"
@@ -34,4 +33,3 @@ private:
     uint32_t m_lossCounter{0};
 };
 }
-#endif /* MODEL_POSSIONRECEIVER_H_ */

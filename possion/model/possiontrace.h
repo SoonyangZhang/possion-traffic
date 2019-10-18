@@ -1,5 +1,4 @@
-#ifndef MODEL_POSSIONTRACE_H_
-#define MODEL_POSSIONTRACE_H_
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -33,4 +32,3 @@ private:
 	std::fstream m_gap;
 };
 }
-#endif /* MODEL_POSSIONTRACE_H_ */
