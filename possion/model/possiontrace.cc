@@ -1,4 +1,4 @@
-#include "possiontrace.h"
+#include "ns3/possiontrace.h"
 #include <unistd.h>
 #include <memory.h>
 #include "ns3/simulator.h"
@@ -15,6 +15,9 @@ void PossionTrace::Log(std::string &s,uint8_t enable){
     }
     if(enable&E_POSSION_GAP){
         OpenTraceSendGapFile(s);
+    }
+    if(enable&E_POSSION_SEND_OWD){
+    	OpenTraceSendOwdFile(s);
     }
 }
 void PossionTrace::OnOwd(uint32_t seq,uint32_t owd){
@@ -38,11 +41,14 @@ void PossionTrace::OnRtt(uint32_t seq,uint32_t rtt){
 	}
 }
 void PossionTrace::OnGap(uint32_t gap){
-	char line [256];
-	memset(line,0,256);
 	if(m_gap.is_open()){
-		sprintf (line, "%d",gap);
-		m_gap<<line<<std::endl;
+		m_gap<<gap<<std::endl;
+	}
+}
+void PossionTrace::OnSendOwd(uint32_t seq,uint32_t owd){
+	if(m_sendOwd.is_open()){
+		float now=Simulator::Now().GetSeconds();
+		m_sendOwd<<now<<"\t"<<seq<<"\t"<<owd<<std::endl;
 	}
 }
 void PossionTrace::OpenTraceOwdFile(std::string &name){
@@ -66,6 +72,13 @@ void PossionTrace::OpenTraceSendGapFile(std::string &name){
 			+name+"_gap.txt";
 	m_gap.open(path.c_str(), std::fstream::out);
 }
+void PossionTrace::OpenTraceSendOwdFile(std::string &name){
+	char buf[FILENAME_MAX];
+	memset(buf,0,FILENAME_MAX);
+	std::string path = std::string (getcwd(buf, FILENAME_MAX)) + "/traces/"
+			+name+"_send_owd.txt";
+	m_sendOwd.open(path.c_str(), std::fstream::out);
+}
 void PossionTrace::CloseTraceOwdFile(){
 	if(m_owd.is_open()){
 		m_owd.close();
@@ -81,10 +94,15 @@ void PossionTrace::CloseTraceSendGapFile(){
 		m_gap.close();
 	}
 }
-
+void PossionTrace::CloseTraceSendOwdFile(){
+	if(m_sendOwd.is_open()){
+		m_sendOwd.close();
+	}
+}
 void PossionTrace::Close(){
 	CloseTraceOwdFile();
 	CloseTraceRttFile();
 	CloseTraceSendGapFile();
+	CloseTraceSendOwdFile();
 }
 }

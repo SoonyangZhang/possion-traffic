@@ -78,23 +78,24 @@ void PossionSender::TimerCallback(){
 			}
 		}
 		m_lastSendTs=now;
-		CreatePacket(m_packetSize,now);
+		CreatePacket(m_packetSize);
 		double micro=e_random(m_lambda)*1000;
 		Time next=MicroSeconds(micro);
 		m_packetsTimer=Simulator::Schedule(next,
 				&PossionSender::TimerCallback,this);
 	}
 }
-void PossionSender::CreatePacket(uint32_t size,int64_t now){
+void PossionSender::CreatePacket(uint32_t size){
+	uint32_t now=Simulator::Now().GetMilliSeconds();
 	uint8_t buf[MAX_BUF_SIZE];
 	memset(buf,0,MAX_BUF_SIZE);
 	uint8_t *write_ptr=buf;
 	uint32_t seq=basic::HostToNet32(m_seq);
 	memcpy((void*)write_ptr,(void*)&seq,sizeof(uint32_t));
 	write_ptr+=sizeof(uint32_t);
-	uint64_t ts=basic::HostToNet64(now);
-	memcpy((void*)write_ptr,(void*)&ts,sizeof(int64_t));
-	write_ptr+=sizeof(int64_t);
+	uint32_t ts=basic::HostToNet32(now);
+	memcpy((void*)write_ptr,(void*)&ts,sizeof(uint32_t));
+	write_ptr+=sizeof(int32_t);
 	Ptr<Packet> p=Create<Packet>((uint8_t*)buf,m_packetSize);
 	SendToNetwork(p);
 	m_seq++;
@@ -106,22 +107,29 @@ void PossionSender::RecvPacket(Ptr<Socket> socket){
 	Address remoteAddr;
 	auto packet = socket->RecvFrom (remoteAddr);
 	uint32_t recv=packet->GetSize ();
-	uint8_t *buf=new uint8_t[recv];
+	uint8_t buf[1500];
 	packet->CopyData(buf,recv);
 	uint8_t *read_ptr=buf;
 	uint32_t seq=0;
-	int64_t send_ts=0;
-	int64_t now=Simulator::Now().GetMicroSeconds();
+	uint32_t send_ts=0;
+	uint32_t receipt_ts=0;
+	uint32_t now=Simulator::Now().GetMilliSeconds();
 	memcpy((void*)&seq,(void*)read_ptr,sizeof(int32_t));
 	read_ptr+=sizeof(int32_t);
-	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(int64_t));
-	read_ptr+=sizeof(int64_t);
+	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(uint32_t));
+	read_ptr+=sizeof(uint32_t);
+	memcpy((void*)&receipt_ts,(void*)read_ptr,sizeof(uint32_t));
+	read_ptr+=sizeof(uint32_t);
 	seq=basic::NetToHost32(seq);
-	send_ts=basic::NetToHost64(send_ts);
-	uint32_t gap=(now-send_ts);
-	delete buf;
+	send_ts=basic::NetToHost32(send_ts);
+	receipt_ts=basic::NetToHost32(receipt_ts);
+	uint32_t rtt=(now-send_ts);
+	uint32_t owd=receipt_ts-send_ts;
 	if(!m_traceRttCb.IsNull()){
-		m_traceRttCb(seq,gap);
+		m_traceRttCb(seq,rtt);
+	}
+	if(!m_traceSendOwdCb.IsNull()){
+		m_traceSendOwdCb(seq,owd);
 	}
 }
 void PossionSender::SendToNetwork(Ptr<Packet> p){

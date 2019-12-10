@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MODEL_POSSIONSENDER_H_
+#define MODEL_POSSIONSENDER_H_
 #include "ns3/event-id.h"
 #include "ns3/callback.h"
 #include "ns3/application.h"
@@ -18,6 +19,10 @@ public:
 	void SetTraceRttFun(TraceRtt cb){
 		m_traceRttCb=cb;
 	}
+	typedef Callback<void,uint32_t,uint32_t> TraceSendOwd;
+	void SetTraceSendOwdFun(TraceSendOwd cb){
+		m_traceSendOwdCb=cb;
+	}
 	typedef Callback<void,uint32_t> TraceGap;
 	void SetTraceGapFun(TraceGap cb){
 		m_traceGapCb=cb;
@@ -26,7 +31,7 @@ private:
 	virtual void StartApplication() override;
 	virtual void StopApplication() override;
 	void TimerCallback();
-	void CreatePacket(uint32_t size,int64_t now);
+	void CreatePacket(uint32_t size);
 	void RecvPacket(Ptr<Socket> socket);
 	void SendToNetwork(Ptr<Packet> p);
 	bool m_running{true};
@@ -41,7 +46,9 @@ private:
     uint16_t m_bindPort;
     Ptr<Socket> m_socket;
     TraceRtt m_traceRttCb;
+    TraceSendOwd m_traceSendOwdCb;
     TraceGap m_traceGapCb;
     int64_t m_lastSendTs{0};
 };
 }
+#endif /* MODEL_POSSIONSENDER_H_ */

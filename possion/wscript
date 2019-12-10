@@ -1,16 +1,16 @@
-# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+## -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+
 def build(bld):
-    module = bld.create_ns3_module('possion', ['network','internet','core'])
-    module.source = [
-    'model/possionreceiver.cc',
-    'model/possionsender.cc',
-    'model/possiontrace.cc',
-    ]
+    udppossion = bld.create_ns3_module('udp-possion', ['core','network','internet'])
+    udppossion.source = [
+        'model/possionsender.cc',
+        'model/possionreceiver.cc',
+        'model/possiontrace.cc',
+        ]
     headers = bld(features='ns3header')
-    headers.module = 'possion'
+    headers.module = 'udp-possion'
     headers.source = [
-    'model/byte_order.h',
-    'model/possionreceiver.h',
-    'model/possionsender.h',
-    'model/possiontrace.h',
-    ]
+        'model/possionsender.h',
+        'model/possionreceiver.h',
+        'model/possiontrace.h',
+        ]

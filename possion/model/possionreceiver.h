@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MODEL_POSSIONRECEIVER_H_
+#define MODEL_POSSIONRECEIVER_H_
 #include "ns3/simulator.h"
 #include "ns3/application.h"
 #include "ns3/socket.h"
@@ -20,7 +21,7 @@ private:
 	virtual void StartApplication() override;
 	virtual void StopApplication() override;
 	void RecvPacket(Ptr<Socket> socket);
-	void CreateAck(uint32_t seq,int64_t ts);
+	void CreateAck(uint32_t seq,uint32_t send_ts);
 	void SendToNetwork(Ptr<Packet> p);
 	bool m_knowPeer{false};
 	bool m_running{true};
@@ -33,3 +34,4 @@ private:
     uint32_t m_lossCounter{0};
 };
 }
+#endif /* MODEL_POSSIONRECEIVER_H_ */

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BYTE_ORDER_H_
+#define BYTE_ORDER_H_
 #include <stdint.h>
 #if defined(COMPILER_MSVC)
 #include <stdlib.h>
@@ -78,3 +79,4 @@ inline uint64_t HostToNet64(uint64_t x) {
 #endif
 }
 }
+#endif

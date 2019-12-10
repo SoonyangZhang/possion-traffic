@@ -7,7 +7,7 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
-#include "ns3/traffic-control-module.h"
+//#include "ns3/traffic-control-module.h"
 #include "ns3/simulator.h"
 #include "ns3/possionsender.h"
 #include "ns3/possionreceiver.h"
@@ -44,8 +44,8 @@ static NodeContainer BuildExampleTopo (uint64_t bps,
     // pointToPoint.EnablePcapAll ("rmcat-example");
 
     // disable tc for now, some bug in ns3 causes extra delay
-    TrafficControlHelper tch;
-    tch.Uninstall (devices);
+    //TrafficControlHelper tch;
+    //tch.Uninstall (devices);
 /*
 	std::string errorModelType = "ns3::RateErrorModel";
   	ObjectFactory factory;
@@ -78,8 +78,9 @@ static void InstallPossionApplication(
     recvApp->SetStartTime (Seconds (startTime));
     recvApp->SetStopTime (Seconds (stopTime));
 	if(trace){
-        sendApp->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,trace));
-        sendApp->SetTraceGapFun(MakeCallback(&PossionTrace::OnGap,trace));
+        //sendApp->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,trace));
+        //sendApp->SetTraceGapFun(MakeCallback(&PossionTrace::OnGap,trace));
+	sendApp->SetTraceSendOwdFun(MakeCallback(&PossionTrace::OnSendOwd,trace));
         recvApp->SetOwdTraceFuc(MakeCallback(&PossionTrace::OnOwd,trace));
 	}	
 }
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]){
         std::string name="possion_"+std::to_string(i+1);
         if(i<num_log){
             std::shared_ptr<PossionTrace> trace(new PossionTrace());
-            trace->Log(name,E_POSSION_OWD);
+            trace->Log(name,E_POSSION_OWD|E_POSSION_SEND_OWD);
             InstallPossionApplication( nodes.Get(0), nodes.Get(1),send_port,recv_port,bps,
             appStart,appStop,trace.get());
             traces.push_back(trace);

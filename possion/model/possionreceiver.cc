@@ -43,20 +43,21 @@ void PossionReceiver::RecvPacket(Ptr<Socket> socket){
 	packet->CopyData(buf,recv);
 	uint8_t *read_ptr=buf;
 	uint32_t seq=0;
-	int64_t send_ts=0;
-	int64_t now=Simulator::Now().GetMicroSeconds();
+	uint32_t send_ts=0;
 	memcpy((void*)&seq,(void*)read_ptr,sizeof(int32_t));
 	read_ptr+=sizeof(int32_t);
-	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(int64_t));
-	read_ptr+=sizeof(int64_t);
+	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(uint32_t));
+	read_ptr+=sizeof(int32_t);
 	seq=basic::NetToHost32(seq);
-	send_ts=basic::NetToHost64(send_ts);
+	send_ts=basic::NetToHost32(send_ts);
 	//NS_LOG_INFO("recv "<<std::to_string(seq)<<" "<<std::to_string(recv));
 	CreateAck(seq,send_ts);
 }
-void PossionReceiver::CreateAck(uint32_t seq,int64_t ts){
-	uint64_t now=Simulator::Now().GetMicroSeconds();
-	uint32_t owd=now-ts;//micro second;
+void PossionReceiver::CreateAck(uint32_t seq,uint32_t send_ts){
+	uint32_t now=Simulator::Now().GetMilliSeconds();
+	uint32_t receipt_ts=now;
+	uint32_t owd=now-send_ts;//milli second;
+
 	if(!m_traceOwdCb.IsNull()){
 		m_traceOwdCb(seq,owd);
 	}
@@ -68,15 +69,18 @@ void PossionReceiver::CreateAck(uint32_t seq,int64_t ts){
 	if(m_baseSeq<=seq){
 		m_baseSeq=seq;
 	}
-	uint32_t total_size=sizeof(uint32_t)+sizeof(int64_t);
+	uint32_t total_size=sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
 	uint8_t buf[MAX_BUF_SIZE];
 	uint8_t *write_ptr=buf;
 	seq=basic::HostToNet32(seq);
-	ts=basic::HostToNet64(ts);
+	send_ts=basic::HostToNet32(send_ts);
+	receipt_ts=basic::HostToNet32(receipt_ts);
 	memcpy((void*)write_ptr,(void*)&seq,sizeof(uint32_t));
 	write_ptr+=sizeof(uint32_t);
-	memcpy((void*)write_ptr,(void*)&ts,sizeof(int64_t));
-	write_ptr+=sizeof(int64_t);
+	memcpy((void*)write_ptr,(void*)&send_ts,sizeof(uint32_t));
+	write_ptr+=sizeof(uint32_t);
+	memcpy((void*)write_ptr,(void*)&receipt_ts,sizeof(uint32_t));
+	write_ptr+=sizeof(uint32_t);
 	Ptr<Packet> p=Create<Packet>((uint8_t*)buf,total_size);
 	SendToNetwork(p);
 }
