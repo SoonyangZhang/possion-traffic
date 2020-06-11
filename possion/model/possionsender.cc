@@ -1,10 +1,9 @@
-#include "ns3/possionsender.h"
-#include "ns3/log.h"
 #include <memory.h>
 #include <string>
-
+#include "ns3/possionsender.h"
+#include "ns3/log.h"
 #include "byte_order.h"
-
+#include "mock_proto.h"
 #include <math.h>
 #include <time.h>
 #include <stdlib.h> //RAND_MAX
@@ -25,20 +24,22 @@ double e_random(double lambda){
     ret=(-1.0/lambda)*log(u);
     return ret;
 }
-#define MAX_BUF_SIZE 1500
 namespace ns3{
 NS_LOG_COMPONENT_DEFINE("PossionSender");
 PossionSender::PossionSender(uint32_t bps):PossionSender(bps,1000){
 	//PossionSender(bps,1000);// this introduces bug;
 }
 PossionSender::PossionSender(uint32_t bps,uint32_t mtu){
+    m_seq=MockPacketNumber(1);
 	m_bps=bps;
 	m_packetSize=mtu;
 	m_interval=((double)m_packetSize*8*1000)/(m_bps);
 	m_lambda=1.0/m_interval;
 	set_seed();
 }
-PossionSender::~PossionSender(){}
+PossionSender::~PossionSender(){
+	m_trans_infos.clear();
+}
 void PossionSender::Bind(uint16_t port){
     if (m_socket== NULL) {
         m_socket = Socket::CreateSocket (GetNode (),UdpSocketFactory::GetTypeId ());
@@ -86,54 +87,64 @@ void PossionSender::TimerCallback(){
 	}
 }
 void PossionSender::CreatePacket(uint32_t size){
-	uint32_t now=Simulator::Now().GetMilliSeconds();
-	uint8_t buf[MAX_BUF_SIZE];
-	memset(buf,0,MAX_BUF_SIZE);
-	uint8_t *write_ptr=buf;
-	uint32_t seq=basic::HostToNet32(m_seq);
-	memcpy((void*)write_ptr,(void*)&seq,sizeof(uint32_t));
-	write_ptr+=sizeof(uint32_t);
-	uint32_t ts=basic::HostToNet32(now);
-	memcpy((void*)write_ptr,(void*)&ts,sizeof(uint32_t));
-	write_ptr+=sizeof(int32_t);
-	Ptr<Packet> p=Create<Packet>((uint8_t*)buf,m_packetSize);
+    Ptr<Packet> p=Create<Packet>(size);
+	uint32_t event_time=Simulator::Now().GetMilliSeconds();
+    MockHeader header(m_seq,event_time,MockHeader::STREAM);
+	NS_ASSERT(size>header.GetSerializedSize());
+    p->AddHeader(header);
 	SendToNetwork(p);
+    if(!m_least_unacked.IsInitialized()){
+        m_least_unacked=m_seq;
+    }
+    m_trans_infos.emplace_back(m_seq.ToUint64(),event_time,size);
 	m_seq++;
 }
 void PossionSender::RecvPacket(Ptr<Socket> socket){
 	if(!m_running){
 		return;
 	}
+    uint32_t now=Simulator::Now().GetMilliSeconds();
 	Address remoteAddr;
 	auto packet = socket->RecvFrom (remoteAddr);
-	uint32_t recv=packet->GetSize ();
-	uint8_t buf[1500];
-	packet->CopyData(buf,recv);
-	uint8_t *read_ptr=buf;
-	uint32_t seq=0;
-	uint32_t send_ts=0;
-	uint32_t receipt_ts=0;
-	uint32_t now=Simulator::Now().GetMilliSeconds();
-	memcpy((void*)&seq,(void*)read_ptr,sizeof(int32_t));
-	read_ptr+=sizeof(int32_t);
-	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(uint32_t));
-	read_ptr+=sizeof(uint32_t);
-	memcpy((void*)&receipt_ts,(void*)read_ptr,sizeof(uint32_t));
-	read_ptr+=sizeof(uint32_t);
-	seq=basic::NetToHost32(seq);
-	send_ts=basic::NetToHost32(send_ts);
-	receipt_ts=basic::NetToHost32(receipt_ts);
-	uint32_t rtt=(now-send_ts);
-	uint32_t owd=receipt_ts-send_ts;
-	if(!m_traceRttCb.IsNull()){
-		m_traceRttCb(seq,rtt);
-	}
-	if(!m_traceSendOwdCb.IsNull()){
-		m_traceSendOwdCb(seq,owd);
-	}
+    MockHeader header;
+    packet->RemoveHeader(header);
+    if(header.GetFrameType()==MockHeader::ACK){
+        MockPacketNumber seq=header.GetFrameSequence();
+        uint32_t receive_ts=header.GetTimeStamp();
+        if(seq>=m_least_unacked){
+            TransmissionInfo *info=GetTransmissionInfo(seq);
+            if(info){
+                uint32_t sent_time=info->sent_time;
+                uint32_t rtt=(now-sent_time);
+                uint32_t owd=receive_ts-sent_time;
+                if(!m_traceRttCb.IsNull()){
+                    m_traceRttCb((uint32_t)seq.ToUint64(),rtt);
+                }
+                if(!m_traceSendOwdCb.IsNull()){
+                    m_traceSendOwdCb((uint32_t)seq.ToUint64(),owd);
+                }
+                uint32_t acked=seq-m_least_unacked;
+                uint32_t i=0;
+                for(i=0;i<=acked;i++){
+                    m_trans_infos.pop_front();
+                    m_least_unacked++;
+                }                
+            }
+
+        }
+    }
 }
 void PossionSender::SendToNetwork(Ptr<Packet> p){
 	m_socket->SendTo(p,0,InetSocketAddress{m_peerIp,m_peerPort});
+}
+PossionSender::TransmissionInfo *PossionSender::GetTransmissionInfo(MockPacketNumber seq){
+    TransmissionInfo *info=nullptr;
+    if(!m_least_unacked.IsInitialized()||seq<m_least_unacked||(m_least_unacked+m_trans_infos.size())<=seq){
+        //NS_LOG_INFO("null info unack "<<least_unacked_<<" "<<seq);
+        return info;
+    }
+    info=&m_trans_infos[seq-m_least_unacked];
+    return info;
 }
 }
 

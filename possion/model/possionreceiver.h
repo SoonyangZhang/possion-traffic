@@ -6,6 +6,7 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/callback.h"
+#include "ns3/mock_packet_number.h"
 namespace ns3{
 class PossionReceiver:public Application{
 public:
@@ -21,7 +22,7 @@ private:
 	virtual void StartApplication() override;
 	virtual void StopApplication() override;
 	void RecvPacket(Ptr<Socket> socket);
-	void CreateAck(uint32_t seq,uint32_t send_ts);
+	void CreateAck(uint32_t sent_ts);
 	void SendToNetwork(Ptr<Packet> p);
 	bool m_knowPeer{false};
 	bool m_running{true};
@@ -30,8 +31,7 @@ private:
     uint16_t m_bindPort;
     Ptr<Socket> m_socket;
     TraceOwd m_traceOwdCb;
-    uint32_t m_baseSeq{0};
-    uint32_t m_lossCounter{0};
+    MockPacketNumber m_largest_receipt;
 };
 }
 #endif /* MODEL_POSSIONRECEIVER_H_ */

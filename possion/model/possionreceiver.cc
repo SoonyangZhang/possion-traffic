@@ -2,8 +2,8 @@
 #include "ns3/log.h"
 #include <memory.h>
 #include "byte_order.h"
+#include "mock_proto.h"
 namespace ns3{
-#define MAX_BUF_SIZE 1500
 NS_LOG_COMPONENT_DEFINE("PossionReceiver");
 void PossionReceiver::Bind(uint16_t port){
     if (m_socket== NULL) {
@@ -24,7 +24,6 @@ InetSocketAddress PossionReceiver::GetLocalAddress(){
 void PossionReceiver::StartApplication(){}
 void PossionReceiver::StopApplication(){
 	m_running=false;
-	NS_LOG_INFO("max "<<std::to_string(m_baseSeq)<<" loss "<<std::to_string(m_lossCounter));
 }
 void PossionReceiver::RecvPacket(Ptr<Socket> socket){
 	if(!m_running){
@@ -37,51 +36,26 @@ void PossionReceiver::RecvPacket(Ptr<Socket> socket){
 	    m_peerPort= InetSocketAddress::ConvertFrom (remoteAddr).GetPort ();
 		m_knowPeer=true;
 	}
-	uint32_t recv=packet->GetSize ();
-	uint8_t buf[MAX_BUF_SIZE];
-	memset(buf,0,MAX_BUF_SIZE);
-	packet->CopyData(buf,recv);
-	uint8_t *read_ptr=buf;
-	uint32_t seq=0;
-	uint32_t send_ts=0;
-	memcpy((void*)&seq,(void*)read_ptr,sizeof(int32_t));
-	read_ptr+=sizeof(int32_t);
-	memcpy((void*)&send_ts,(void*)read_ptr,sizeof(uint32_t));
-	read_ptr+=sizeof(int32_t);
-	seq=basic::NetToHost32(seq);
-	send_ts=basic::NetToHost32(send_ts);
-	//NS_LOG_INFO("recv "<<std::to_string(seq)<<" "<<std::to_string(recv));
-	CreateAck(seq,send_ts);
+    MockHeader header;
+    packet->RemoveHeader(header);
+    if(header.GetFrameType()==MockHeader::STREAM){
+        MockPacketNumber seq=header.GetFrameSequence();
+        uint32_t sent_ts=header.GetTimeStamp();
+        if(!m_largest_receipt.IsInitialized()||seq>m_largest_receipt){
+            m_largest_receipt=seq;
+            CreateAck(sent_ts);
+        }
+    }
 }
-void PossionReceiver::CreateAck(uint32_t seq,uint32_t send_ts){
-	uint32_t now=Simulator::Now().GetMilliSeconds();
-	uint32_t receipt_ts=now;
-	uint32_t owd=now-send_ts;//milli second;
-
+void PossionReceiver::CreateAck(uint32_t sent_ts){
+	uint32_t receive_time=Simulator::Now().GetMilliSeconds();
+	uint32_t owd=receive_time-sent_ts;
 	if(!m_traceOwdCb.IsNull()){
-		m_traceOwdCb(seq,owd);
+		m_traceOwdCb((uint32_t)m_largest_receipt.ToUint64(),owd);
 	}
-	if(m_baseSeq+1<seq){
-		uint32_t start=m_baseSeq+1;
-		uint32_t i=0;
-		m_lossCounter+=(seq-start);
-	}
-	if(m_baseSeq<=seq){
-		m_baseSeq=seq;
-	}
-	uint32_t total_size=sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
-	uint8_t buf[MAX_BUF_SIZE];
-	uint8_t *write_ptr=buf;
-	seq=basic::HostToNet32(seq);
-	send_ts=basic::HostToNet32(send_ts);
-	receipt_ts=basic::HostToNet32(receipt_ts);
-	memcpy((void*)write_ptr,(void*)&seq,sizeof(uint32_t));
-	write_ptr+=sizeof(uint32_t);
-	memcpy((void*)write_ptr,(void*)&send_ts,sizeof(uint32_t));
-	write_ptr+=sizeof(uint32_t);
-	memcpy((void*)write_ptr,(void*)&receipt_ts,sizeof(uint32_t));
-	write_ptr+=sizeof(uint32_t);
-	Ptr<Packet> p=Create<Packet>((uint8_t*)buf,total_size);
+    MockHeader header(m_largest_receipt,receive_time,MockHeader::ACK);
+	Ptr<Packet> p=Create<Packet>(header.GetSerializedSize());
+    p->AddHeader(header);
 	SendToNetwork(p);
 }
 void PossionReceiver::SendToNetwork(Ptr<Packet> p){
