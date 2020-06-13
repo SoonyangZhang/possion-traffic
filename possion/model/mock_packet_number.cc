@@ -23,12 +23,12 @@ void MockPacketNumber::UpdateMax(MockPacketNumber new_value) {
 }
 
 uint64_t MockPacketNumber::Hash() const {
-  DCHECK(IsInitialized());
+  //DCHECK(IsInitialized());
   return packet_number_;
 }
 
 uint64_t MockPacketNumber::ToUint64() const {
-  DCHECK(IsInitialized());
+  //DCHECK(IsInitialized());
   return packet_number_;
 }
 

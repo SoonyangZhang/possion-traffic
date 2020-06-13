@@ -8,10 +8,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/traffic-control-module.h"
-#include "ns3/simulator.h"
-#include "ns3/possionsender.h"
-#include "ns3/possionreceiver.h"
-#include "ns3/possiontrace.h"
+#include "ns3/possion-module.h"
 #include "ns3/log.h"
 using namespace std;
 using namespace ns3;
@@ -67,7 +64,7 @@ static void InstallPossionApplication(
 )
 {
     Ptr<PossionSender> sendApp = CreateObject<PossionSender> (bps);
-	Ptr<PossionReceiver> recvApp = CreateObject<PossionReceiver>();
+	Ptr<AckFeeder> recvApp = CreateObject<AckFeeder>();
    	sender->AddApplication (sendApp);
     receiver->AddApplication (recvApp);
     Ptr<Ipv4> ipv4 = receiver->GetObject<Ipv4> ();
@@ -80,9 +77,9 @@ static void InstallPossionApplication(
     recvApp->SetStartTime (Seconds (startTime));
     recvApp->SetStopTime (Seconds (stopTime));
 	if(trace){
-        sendApp->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,trace));
+        //sendApp->SetTraceRttFun(MakeCallback(&PossionTrace::OnRtt,trace));
         //sendApp->SetTraceGapFun(MakeCallback(&PossionTrace::OnGap,trace));
-	sendApp->SetTraceSendOwdFun(MakeCallback(&PossionTrace::OnSendOwd,trace));
+	//sendApp->SetTraceSendOwdFun(MakeCallback(&PossionTrace::OnSendOwd,trace));
         recvApp->SetOwdTraceFuc(MakeCallback(&PossionTrace::OnOwd,trace));
 	}	
 }
@@ -91,7 +88,6 @@ float appStart=0.0;
 float appStop=simDuration-1;
 int main(int argc, char *argv[]){
 	LogComponentEnable("PossionSender",LOG_LEVEL_ALL);
-	LogComponentEnable("PossionReceiver",LOG_LEVEL_ALL);
 	uint64_t linkBw   = 3000000;//4000000;
     uint32_t msDelay  = 100;//50;//100;
     uint32_t msQDelay = 200;
@@ -107,7 +103,7 @@ int main(int argc, char *argv[]){
         std::string name="possion_"+std::to_string(i+1);
         if(i<num_log){
             std::shared_ptr<PossionTrace> trace(new PossionTrace());
-            trace->Log(name,E_POSSION_OWD|E_POSSION_SEND_OWD|E_POSSION_RTT);
+            trace->Log(name,E_POSSION_OWD);
             InstallPossionApplication( nodes.Get(0), nodes.Get(1),send_port,recv_port,bps,
             appStart,appStop,trace.get());
             traces.push_back(trace);

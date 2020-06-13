@@ -8,16 +8,10 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/mock_packet_number.h"
+#include "ns3/mock_proto.h"
 namespace ns3{
 class PossionSender :public Application{
 public:
-struct TransmissionInfo{
-    TransmissionInfo(uint64_t n,uint32_t time,uint32_t len):
-    seq(n),sent_time(time),bytes(len){}
-    uint64_t seq;
-    uint32_t sent_time;
-    uint32_t bytes;
-};
 	PossionSender(uint32_t bps);
 	PossionSender(uint32_t bps,uint32_t mtu);
 	~PossionSender();

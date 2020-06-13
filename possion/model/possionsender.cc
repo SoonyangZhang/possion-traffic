@@ -96,7 +96,8 @@ void PossionSender::CreatePacket(uint32_t size){
     if(!m_least_unacked.IsInitialized()){
         m_least_unacked=m_seq;
     }
-    m_trans_infos.emplace_back(m_seq.ToUint64(),event_time,size);
+	uint32_t pay_byte=size-header.GetSerializedSize();
+    m_trans_infos.emplace_back(MockHeader::STREAM,m_seq.ToUint64(),event_time,(uint16_t)size,(uint16_t)pay_byte);
 	m_seq++;
 }
 void PossionSender::RecvPacket(Ptr<Socket> socket){
@@ -137,7 +138,7 @@ void PossionSender::RecvPacket(Ptr<Socket> socket){
 void PossionSender::SendToNetwork(Ptr<Packet> p){
 	m_socket->SendTo(p,0,InetSocketAddress{m_peerIp,m_peerPort});
 }
-PossionSender::TransmissionInfo *PossionSender::GetTransmissionInfo(MockPacketNumber seq){
+TransmissionInfo *PossionSender::GetTransmissionInfo(MockPacketNumber seq){
     TransmissionInfo *info=nullptr;
     if(!m_least_unacked.IsInitialized()||seq<m_least_unacked||(m_least_unacked+m_trans_infos.size())<=seq){
         //NS_LOG_INFO("null info unack "<<least_unacked_<<" "<<seq);

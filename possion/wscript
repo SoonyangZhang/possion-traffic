@@ -3,18 +3,18 @@
 def build(bld):
     udppossion = bld.create_ns3_module('possion', ['core','network','internet'])
     udppossion.source = [
+        'model/ack_feeder.cc',
         'model/mock_packet_number.cc',
         'model/mock_proto.cc',
         'model/possionsender.cc',
-        'model/possionreceiver.cc',
         'model/possiontrace.cc',
         ]
     headers = bld(features='ns3header')
     headers.module = 'possion'
     headers.source = [
+        'model/ack_feeder.h',
         'model/mock_packet_number.h',
         'model/mock_proto.h',
         'model/possionsender.h',
-        'model/possionreceiver.h',
         'model/possiontrace.h',
         ]

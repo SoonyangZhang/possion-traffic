@@ -2,7 +2,6 @@
 #include <limits>
 #include <cstdint>
 #include <ostream>
-#include "logging.h"
 namespace ns3{
 class  MockPacketNumber {
  public:
@@ -79,54 +78,46 @@ class QuicPacketNumberHash {
 };
 
 inline bool operator==(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+  //DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ == rhs.packet_number_;
 }
 
 inline bool operator!=(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+ // DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ != rhs.packet_number_;
 }
 
 inline bool operator<(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+  //DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ < rhs.packet_number_;
 }
 
 inline bool operator<=(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+  //DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ <= rhs.packet_number_;
 }
 
 inline bool operator>(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+  //DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ > rhs.packet_number_;
 }
 
 inline bool operator>=(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
+  //DCHECK(lhs.IsInitialized() && rhs.IsInitialized()) << lhs << " vs. " << rhs;
   return lhs.packet_number_ >= rhs.packet_number_;
 }
 
 inline MockPacketNumber operator+(MockPacketNumber lhs, uint64_t delta) {
-#ifndef NDEBUG
-  DCHECK(lhs.IsInitialized());
-  DCHECK_GT(std::numeric_limits<uint64_t>::max() - lhs.ToUint64(), delta);
-#endif
   return MockPacketNumber(lhs.packet_number_ + delta);
 }
 
 inline MockPacketNumber operator-(MockPacketNumber lhs, uint64_t delta) {
-#ifndef NDEBUG
-  DCHECK(lhs.IsInitialized());
-  DCHECK_GE(lhs.ToUint64(), delta);
-#endif
   return MockPacketNumber(lhs.packet_number_ - delta);
 }
 
 inline uint64_t operator-(MockPacketNumber lhs, MockPacketNumber rhs) {
-  DCHECK(lhs.IsInitialized() && rhs.IsInitialized() && lhs >= rhs)
-      << lhs << " vs. " << rhs;
+ // DCHECK(lhs.IsInitialized() && rhs.IsInitialized() && lhs >= rhs)
+ //     << lhs << " vs. " << rhs;
   return lhs.packet_number_ - rhs.packet_number_;
 }
 }

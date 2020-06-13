@@ -8,10 +8,10 @@
 #include "ns3/callback.h"
 #include "ns3/mock_packet_number.h"
 namespace ns3{
-class PossionReceiver:public Application{
+class AckFeeder:public Application{
 public:
-	PossionReceiver(){}
-	~PossionReceiver(){}
+	AckFeeder(){}
+	~AckFeeder(){}
 	void Bind(uint16_t port);
 	InetSocketAddress GetLocalAddress();
 	typedef Callback<void,uint32_t,uint32_t> TraceOwd;

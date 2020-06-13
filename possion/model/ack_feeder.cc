@@ -1,11 +1,11 @@
-#include "ns3/possionreceiver.h"
+#include "ns3/ack_feeder.h"
 #include "ns3/log.h"
 #include <memory.h>
 #include "byte_order.h"
 #include "mock_proto.h"
 namespace ns3{
-NS_LOG_COMPONENT_DEFINE("PossionReceiver");
-void PossionReceiver::Bind(uint16_t port){
+NS_LOG_COMPONENT_DEFINE("AckFeeder");
+void AckFeeder::Bind(uint16_t port){
     if (m_socket== NULL) {
         m_socket = Socket::CreateSocket (GetNode (),UdpSocketFactory::GetTypeId ());
         auto local = InetSocketAddress{Ipv4Address::GetAny (), port};
@@ -13,19 +13,19 @@ void PossionReceiver::Bind(uint16_t port){
         NS_ASSERT (res == 0);
     }
     m_bindPort=port;
-    m_socket->SetRecvCallback (MakeCallback(&PossionReceiver::RecvPacket,this));
+    m_socket->SetRecvCallback (MakeCallback(&AckFeeder::RecvPacket,this));
 }
-InetSocketAddress PossionReceiver::GetLocalAddress(){
+InetSocketAddress AckFeeder::GetLocalAddress(){
     Ptr<Node> node=GetNode();
     Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> ();
     Ipv4Address local_ip = ipv4->GetAddress (1, 0).GetLocal ();
 	return InetSocketAddress{local_ip,m_bindPort};
 }
-void PossionReceiver::StartApplication(){}
-void PossionReceiver::StopApplication(){
+void AckFeeder::StartApplication(){}
+void AckFeeder::StopApplication(){
 	m_running=false;
 }
-void PossionReceiver::RecvPacket(Ptr<Socket> socket){
+void AckFeeder::RecvPacket(Ptr<Socket> socket){
 	if(!m_running){
 		return ;
 	}
@@ -38,7 +38,7 @@ void PossionReceiver::RecvPacket(Ptr<Socket> socket){
 	}
     MockHeader header;
     packet->RemoveHeader(header);
-    if(header.GetFrameType()==MockHeader::STREAM){
+    if(header.GetFrameType()==MockHeader::STREAM||header.GetFrameType()==MockHeader::PING){
         MockPacketNumber seq=header.GetFrameSequence();
         uint32_t sent_ts=header.GetTimeStamp();
         if(!m_largest_receipt.IsInitialized()||seq>m_largest_receipt){
@@ -47,7 +47,7 @@ void PossionReceiver::RecvPacket(Ptr<Socket> socket){
         }
     }
 }
-void PossionReceiver::CreateAck(uint32_t sent_ts){
+void AckFeeder::CreateAck(uint32_t sent_ts){
 	uint32_t receive_time=Simulator::Now().GetMilliSeconds();
 	uint32_t owd=receive_time-sent_ts;
 	if(!m_traceOwdCb.IsNull()){
@@ -58,7 +58,7 @@ void PossionReceiver::CreateAck(uint32_t sent_ts){
     p->AddHeader(header);
 	SendToNetwork(p);
 }
-void PossionReceiver::SendToNetwork(Ptr<Packet> p){
+void AckFeeder::SendToNetwork(Ptr<Packet> p){
 	m_socket->SendTo(p,0,InetSocketAddress{m_peerIp,m_peerPort});
 }
 }

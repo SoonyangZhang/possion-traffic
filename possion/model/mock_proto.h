@@ -27,6 +27,7 @@ public:
         FRAMEMIN,
         STREAM,
         ACK,
+        PING,
         FRAMEMAX,
     };
     MockHeader(){}
@@ -51,5 +52,17 @@ private:
     MockPacketNumber sequence_;
     uint32_t event_time_{0};
 };
+struct TransmissionInfo{
+    TransmissionInfo(MockHeader::FrameType ty,uint64_t n,uint32_t time,uint16_t sent_len,uint16_t pay_len):
+    seq(n),sent_time(time),sent_bytes(sent_len),pay_bytes(pay_len),type(ty){}
+    uint64_t seq;
+    uint32_t sent_time;
+    uint16_t sent_bytes;
+	uint16_t pay_bytes;
+	MockHeader::FrameType type;
+};
+inline bool is_retransmittable_frame(MockHeader::FrameType type){
+    return type==MockHeader::STREAM;
+}
 }
 
