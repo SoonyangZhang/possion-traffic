@@ -25,13 +25,25 @@ static NodeContainer BuildExampleTopo (uint64_t bps,
     pointToPoint.SetDeviceAttribute ("DataRate", DataRateValue  (DataRate (bps)));
     pointToPoint.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (msDelay)));
     auto bufSize = std::max<uint32_t> (DEFAULT_PACKET_SIZE, bps * msQdelay / 8000);
-    pointToPoint.SetQueue ("ns3::DropTailQueue",
+    //ns2.26
+    /*pointToPoint.SetQueue ("ns3::DropTailQueue",
                            "Mode", StringValue ("QUEUE_MODE_BYTES"),
-                           "MaxBytes", UintegerValue (bufSize));
+                           "MaxBytes", UintegerValue (bufSize));*/
+    int packets=bufSize/DEFAULT_PACKET_SIZE;
+    pointToPoint.SetQueue ("ns3::DropTailQueue",
+                           "MaxSize", StringValue (std::to_string(1)+"p"));
+    //pointToPoint.SetQueue ("ns3::DropTailQueue");
     NetDeviceContainer devices = pointToPoint.Install (nodes);
 
     InternetStackHelper stack;
     stack.Install (nodes);
+
+    TrafficControlHelper pfifoHelper;
+    uint16_t handle = pfifoHelper.SetRootQueueDisc ("ns3::FifoQueueDisc", "MaxSize", StringValue (std::to_string(packets)+"p"));
+    pfifoHelper.AddInternalQueues (handle, 1, "ns3::DropTailQueue", "MaxSize",StringValue (std::to_string(packets)+"p"));
+    pfifoHelper.Install(devices);
+
+
     Ipv4AddressHelper address;
     std::string nodeip="10.1.1.0";
     address.SetBase (nodeip.c_str(), "255.255.255.0");
@@ -43,8 +55,7 @@ static NodeContainer BuildExampleTopo (uint64_t bps,
     // disable tc for now, some bug in ns3 causes extra delay
 	//it is a hard lession to enable tc, the delay in test in unbelievable
 	//2020.6.11 21:34
-    TrafficControlHelper tch;
-    tch.Uninstall (devices);
+
 /*
 	std::string errorModelType = "ns3::RateErrorModel";
   	ObjectFactory factory;
